@@ -38,6 +38,54 @@ describe('EmployeeService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('create', () => {
+    it('should throw error if regular employee has subordinates', async () => {
+      await expect(service.create({
+        name: 'Test',
+        joinDate: new Date(),
+        baseSalary: 1000,
+        role: EMPLOYEE_ROLE.EMPLOYEE,
+        subordinates: ['sub-1']
+      })).rejects.toThrow('Regular employees cannot have subordinates.');
+    });
+
+    it('should throw error if subordinate is also the manager (cyclic)', async () => {
+      await expect(service.create({
+        name: 'Test',
+        joinDate: new Date(),
+        baseSalary: 1000,
+        role: EMPLOYEE_ROLE.MANAGER,
+        managerId: 'cycle-id',
+        subordinates: ['sub-1', 'cycle-id']
+      })).rejects.toThrow('A subordinate cannot be the manager of the same employee.');
+    });
+
+    it('should call prisma.create with connect for subordinates', async () => {
+      (prisma.employee.create as any).mockResolvedValue({ id: 'new-id' });
+      
+      const dto = {
+        name: 'Manager',
+        joinDate: new Date('2024-01-01'),
+        baseSalary: 2000,
+        role: EMPLOYEE_ROLE.MANAGER,
+        subordinates: ['sub-1', 'sub-2']
+      };
+
+      await service.create(dto);
+      
+      expect(prisma.employee.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: 'Manager',
+          role: EMPLOYEE_ROLE.MANAGER,
+          subordinates: {
+            connect: [{ id: 'sub-1' }, { id: 'sub-2' }]
+          }
+        }),
+        include: { subordinates: true }
+      });
+    });
+  });
+
   describe('calculateSalary', () => {
     it('should calculate EMPLOYEE salary correctly', async () => {
       const mockEmployees = [

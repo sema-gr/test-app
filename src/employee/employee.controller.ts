@@ -8,9 +8,6 @@ export class EmployeeController {
 
   @Post()
   create(@Body() createEmployeeDto: CreateEmployeeDto) {
-    if (createEmployeeDto.joinDate) {
-      createEmployeeDto.joinDate = new Date(createEmployeeDto.joinDate);
-    }
     return this.employeeService.create(createEmployeeDto);
   }
 

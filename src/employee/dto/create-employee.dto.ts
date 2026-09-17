@@ -6,4 +6,5 @@ export class CreateEmployeeDto {
   baseSalary: number;
   role: EmployeeType;
   managerId?: string;
+  subordinates?: string[];
 }

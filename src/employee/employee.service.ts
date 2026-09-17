@@ -7,7 +7,28 @@ import { EMPLOYEE_ROLE, BONUS_RATES } from './constants/employee.constants.js';
 export class EmployeeService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private mapCreateEmployeeData(dto: CreateEmployeeDto) {
+    return {
+      name: dto.name,
+      joinDate: new Date(dto.joinDate),
+      baseSalary: dto.baseSalary,
+      role: dto.role,
+      managerId: dto.managerId,
+      subordinates: dto.subordinates?.length ? {
+        connect: dto.subordinates.map(id => ({ id }))
+      } : undefined,
+    };
+  }
+
   async create(createEmployeeDto: CreateEmployeeDto) {
+    if (createEmployeeDto.role === EMPLOYEE_ROLE.EMPLOYEE && createEmployeeDto.subordinates?.length) {
+      throw new BadRequestException('Regular employees cannot have subordinates.');
+    }
+
+    if (createEmployeeDto.managerId && createEmployeeDto.subordinates?.includes(createEmployeeDto.managerId)) {
+      throw new BadRequestException('A subordinate cannot be the manager of the same employee.');
+    }
+
     if (createEmployeeDto.managerId) {
 
       const manager = await this.prisma.employee.findUnique({
@@ -23,12 +44,15 @@ export class EmployeeService {
       }
     }
     return this.prisma.employee.create({
-      data: createEmployeeDto,
+      data: this.mapCreateEmployeeData(createEmployeeDto),
+      include: { subordinates: true },
     });
   }
 
   findAll() {
-    return this.prisma.employee.findMany();
+    return this.prisma.employee.findMany({
+      include: { subordinates: true },
+    });
   }
 
   async calculateSalary(dateStr?: string, employeeId?: string) {
