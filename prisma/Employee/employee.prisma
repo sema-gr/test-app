@@ -1,0 +1,18 @@
+
+enum EmployeeType {
+  EMPLOYEE
+  MANAGER
+  SALES
+}
+
+model Employee {
+  id         String     @id @default(uuid())
+  name       String
+  joinDate   DateTime
+  baseSalary Float
+  role       EmployeeType
+  
+  managerId  String?
+  manager    Employee?  @relation("ManagerToSubordinates", fields: [managerId], references: [id])
+  subordinates Employee[] @relation("ManagerToSubordinates")
+}
